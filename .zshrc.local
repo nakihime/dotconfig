@@ -1,0 +1,126 @@
+# Local configurations -*- mode: sh -*-
+
+# Theme
+# Load the pure theme, with zsh-async library that's bundled with it.
+zinit ice depth"1" pick"async.zsh" src"pure.zsh"
+zinit light sindresorhus/pure
+
+# Load starship theme (requires nerd fonts)
+# zinit ice as"program" wait lucid from"gh-r"
+# zinit light starship/starship
+# (( $+commands[starship] )) && eval $(starship init zsh)
+
+# Plugins
+# zinit wait lucid for \
+    #       OMZP::python \
+    #       OMZP::golang \
+    #       OMZP::ruby \
+    #       OMZP::rbenv \
+    #       OMZP::rails \
+    #       OMZP::rust
+
+# zinit as"completion" wait lucid for \
+    #       OMZP::docker/_docker \
+    #       OMZP::rust/_rustc
+
+# Show system information
+# if (( $+commands[neofetch] )); then
+#     neofetch
+# fi
+
+# iTerm2 shell integration
+# if test -e "${HOME}/.iterm2_shell_integration.zsh"; then
+#     source "${HOME}/.iterm2_shell_integration.zsh"
+# fi
+
+# For Emacs vterm
+if [ -n "$INSIDE_EMACS" ]; then
+    DISABLE_AUTO_TITLE="true"
+    # ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=gray,underline'
+
+    # VTerm
+    if [[ "$INSIDE_EMACS" = 'vterm' ]]; then
+        function vterm_printf(){
+            if [ -n "$TMUX" ]; then
+                # tell tmux to pass the escape sequences through
+                # (Source: http://permalink.gmane.org/gmane.comp.terminal-emulators.tmux.user/1324)
+                printf "\ePtmux;\e\e]%s\007\e\\" "$1"
+            elif [ "${TERM%%-*}" = "screen" ]; then
+                # GNU screen (screen, screen-256color, screen-256color-bce)
+                printf "\eP\e]%s\007\e\\" "$1"
+            else
+                printf "\e]%s\e\\" "$1"
+            fi
+        }
+
+        function vterm_prompt_end() {
+            vterm_printf "51;A$(whoami)@$(hostname):$(pwd)";
+        }
+
+        setopt PROMPT_SUBST
+        PROMPT=$PROMPT'%{$(vterm_prompt_end)%}'
+
+        alias clear='vterm_printf "51;Evterm-clear-scrollback";tput clear'
+        alias reset='vterm_printf "51;Evterm-clear-scrollback";tput clear'
+    fi
+fi
+
+# Env
+# export EDITOR=vim
+# PROXY=http://127.0.0.1:8001
+# PROXY2=http://127.0.0.1:8123
+
+# Aliases
+# alias flush_dns='sudo dscacheutil -flushcache;sudo killall -HUP mDNSResponder'
+
+# Homebrew
+if [[ $OSTYPE == darwin* ]]; then
+    export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.ustc.edu.cn/brew.git"
+    export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.ustc.edu.cn/homebrew-core.git"
+    export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles"
+
+    function set_homebrew_mirror() {
+        export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.ustc.edu.cn/brew.git"
+        export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.ustc.edu.cn/homebrew-core.git"
+        export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles"
+
+        brew tap --custom-remote --force-auto-update homebrew/cask https://mirrors.ustc.edu.cn/homebrew-cask.git
+        brew tap --custom-remote --force-auto-update homebrew/cask-versions https://mirrors.ustc.edu.cn/homebrew-cask-versions.git
+
+        brew update
+    }
+
+    function reset_homebrew_mirror() {
+        unset HOMEBREW_BREW_GIT_REMOTE
+        unset HOMEBREW_BOTTLE_DOMAIN
+        unset HOMEBREW_CORE_GIT_REMOTE
+
+        brew tap --custom-remote homebrew/core https://github.com/Homebrew/homebrew-core
+        brew tap --custom-remote --force-auto-update homebrew/cask https://github.com/Homebrew/homebrew-cask
+        brew tap --custom-remote --force-auto-update homebrew/cask-versions https://github.com/Homebrew/homebrew-cask-versions
+
+        brew update
+    }
+fi
+
+# Golang
+if (( $+commands[go] )); then
+    export GOPROXY=https://goproxy.cn
+    # export GOPROXY=https://goproxy.io
+    # export GOPROXY=https://athens.azurefd.net
+
+    function goclean() {
+        go clean -i -n $1
+        go clean -i $1
+        rm -rf $GOPATH/src/$1
+        if [ -d $GOPATH/pkg/${sysOS:l}_amd64/$1 ]; then
+            rm -rf $GOPATH/pkg/${sysOS:l}_amd64/$1;
+        fi
+    }
+
+    function goclean_test() {
+        go clean -i -n $1
+        tree -L 1 $GOPATH/src/$1
+        tree -L 1 $GOPATH/pkg/${sysOS:l}_amd64/$1
+    }
+fi
